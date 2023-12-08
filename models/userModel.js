@@ -2,7 +2,7 @@ const { Schema, default: mongoose } = require("mongoose");
 
 const userSchema = new Schema(
   {
-    username: {
+    fullname: {
       type: String,
       required: [true, "Please enter a username."],
       unique: true,
@@ -11,6 +11,14 @@ const userSchema = new Schema(
       type: String,
       required: [true, "Please enter an email address."],
       unique: [true, "Email address already exists."],
+      lowercase: true,
+      trim: true,
+      validate: {
+        validator: function (v) {
+          return /^([\w-\.]+@([\w-]+\.)+[\w-]{2,4})?$/.test(v);
+        },
+        message: "Please enter a valid email address.",
+      },
     },
     password: {
       type: String,

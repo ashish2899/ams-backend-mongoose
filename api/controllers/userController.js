@@ -7,8 +7,8 @@ const User = require("../../models/userModel");
 // @route POST /api/v1/users/register
 // @access Public
 exports.registerUser = asyncHandler(async (req, res, next) => {
-  const { username, email, password } = req.body;
-  if (!username || !email || !password) {
+  const { fullname, email, password } = req.body;
+  if (!fullname || !email || !password) {
     res.status(400);
     throw new Error("Please add all fields");
   }
@@ -26,7 +26,7 @@ exports.registerUser = asyncHandler(async (req, res, next) => {
 
   // Create user
   const user = await User.create({
-    username,
+    fullname,
     email,
     password: hashedPassword,
   });
@@ -34,7 +34,7 @@ exports.registerUser = asyncHandler(async (req, res, next) => {
   if (user) {
     res.status(201).json({
       _id: user.id,
-      username: user.username,
+      fullname: user.fullname,
       email: user.email,
     });
   } else {
@@ -56,7 +56,7 @@ exports.loginUser = asyncHandler(async (req, res, next) => {
   // Check for user email
   const user = await User.findOne({ email });
   if (user && (await bcrypt.compare(password, user.password))) {
-    const accessToken = jwt.sign(
+    jwt.sign(
       {
         user: {
           username: user.username,
@@ -67,9 +67,12 @@ exports.loginUser = asyncHandler(async (req, res, next) => {
       process.env.ACCESS_TOKEN_SECRET,
       {
         expiresIn: "30m",
+      },
+      (err, token) => {
+        if (err) throw err;
+        res.cookie("token", token).json(user._id);
       }
     );
-    res.status(200).json({ accessToken });
   } else {
     res.status(401);
     throw new Error("Invalid credentials");
@@ -81,4 +84,12 @@ exports.loginUser = asyncHandler(async (req, res, next) => {
 // @access Private
 exports.getCurrentUser = asyncHandler(async (req, res, next) => {
   res.json(req.user);
+});
+
+// @desc Logout a user
+// @route GET /api/v1/user/logout
+// @access Private
+exports.logoutUser = asyncHandler(async (req, res, next) => {
+  res.json({ success: true, message: "User logged out successfully" });
+  res.clearCookie("token");
 });
