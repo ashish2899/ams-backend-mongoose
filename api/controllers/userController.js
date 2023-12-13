@@ -3,86 +3,76 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const User = require("../../models/userModel");
 
-// @desc Register a user
-// @route POST /api/v1/users/register
-// @access Public
-exports.registerUser = asyncHandler(async (req, res, next) => {
+//@desc Register a user
+//@route POST /api/users/register
+//@access public
+exports.registerUser = asyncHandler(async (req, res) => {
   const { fullname, email, password } = req.body;
   if (!fullname || !email || !password) {
     res.status(400);
-    throw new Error("Please add all fields");
+    throw new Error("All fields are mandatory!");
   }
-  // Email alerady exits
-  const userExists = await User.findOne({ email });
-  if (userExists) {
+  const userAvailable = await User.findOne({ email });
+  if (userAvailable) {
     res.status(400);
-    throw new Error("User already exists");
+    throw new Error("User already registered!");
   }
 
-  // Hashing password
-  const salt = await bcrypt.genSalt(10);
-  const hashedPassword = await bcrypt.hash(password, salt);
-  console.log(hashedPassword);
-
-  // Create user
+  //Hash password
+  const hashedPassword = await bcrypt.hash(password, 10);
+  console.log("Hashed Password: ", hashedPassword);
   const user = await User.create({
     fullname,
     email,
     password: hashedPassword,
   });
-  console.log(`User Created ${user}`);
+
+  console.log(`User created ${user}`);
   if (user) {
-    res.status(201).json({
-      _id: user.id,
-      fullname: user.fullname,
-      email: user.email,
-    });
+    res.status(201).json({ _id: user.id, email: user.email });
   } else {
     res.status(400);
-    throw new Error("Invalid user data");
+    throw new Error("User data is not valid");
   }
+  res.json({ message: "Register the user" });
 });
 
-// @desc Login a user
-// @route POST /api/v1/users/login
-// @access Public
-exports.loginUser = asyncHandler(async (req, res, next) => {
+//@desc Login user
+//@route POST /api/users/login
+//@access public
+exports.loginUser = asyncHandler(async (req, res) => {
+  console.log(req.body);
   const { email, password } = req.body;
-  console.log(email, password);
   if (!email || !password) {
     res.status(400);
-    throw new Error("Please add all fields");
+    throw new Error("All fields are mandatory!");
   }
-  // Check for user email
   const user = await User.findOne({ email });
+  //compare password with hashedpassword
   if (user && (await bcrypt.compare(password, user.password))) {
-    jwt.sign(
+    const accessToken = jwt.sign(
       {
         user: {
-          username: user.username,
+          fullname: user.fullname,
           email: user.email,
           id: user.id,
         },
       },
-      process.env.ACCESS_TOKEN_SECRET,
-      {
-        expiresIn: "30m",
-      },
-      (err, token) => {
-        if (err) throw err;
-        res.cookie("token", token).json(user._id);
-      }
+      process.env.ACCESS_TOKEN_SECERT,
+      { expiresIn: "1d" }
     );
+    res.cookie("token", accessToken);
+    res.status(200).json({ accessToken });
   } else {
     res.status(401);
-    throw new Error("Invalid credentials");
+    throw new Error("email or password is not valid");
   }
 });
 
-// @desc Get current user
-// @route GET /api/v1/users/current
-// @access Private
-exports.getCurrentUser = asyncHandler(async (req, res, next) => {
+//@desc Current user info
+//@route POST /api/users/current
+//@access private
+exports.currentUser = asyncHandler(async (req, res) => {
   res.json(req.user);
 });
 
@@ -90,6 +80,10 @@ exports.getCurrentUser = asyncHandler(async (req, res, next) => {
 // @route GET /api/v1/user/logout
 // @access Private
 exports.logoutUser = asyncHandler(async (req, res, next) => {
-  res.json({ success: true, message: "User logged out successfully" });
+  // logout fuctinallity after delete access_token
   res.clearCookie("token");
+  res.status(200).json({
+    message: "Logout successfully",
+    access_token: null,
+  });
 });

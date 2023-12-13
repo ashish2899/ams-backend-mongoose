@@ -40,6 +40,7 @@ exports.getAssetById = asyncHandler(async (req, res, next) => {
 // @route POST /api/v1/asset
 // @access Private
 exports.createAsset = asyncHandler(async (req, res, next) => {
+  console.log(req.body);
   const { name, description, purchase_cost, purchase_date } = req.body;
   if (!name || !description || !purchase_cost || !purchase_date) {
     res.status(400);
